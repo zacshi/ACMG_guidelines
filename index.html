@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Variant classification workbench</title>
+<style>
+:root{
+  color-scheme:light;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --bg:#EBEFF2; --surface:#F9FBFC; --surface2:#F0F4F6; --ink:#14222C; --muted:#586873; --line:#CAD3DA; --focus:#17607A;
+  --c-P:#B3123F; --c-LP:#CF5126; --c-VUS:#7A6828; --c-LB:#3A8AA0; --c-B:#17607A;
+  --warn:#A8620B;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    color-scheme:dark;
+    --bg:#0E1920; --surface:#15232C; --surface2:#1B2C37; --ink:#E5ECF0; --muted:#93A5B1; --line:#2B3E4A; --focus:#7CC3D4;
+    --c-P:#FF6E8E; --c-LP:#FF9B6E; --c-VUS:#D6BC66; --c-LB:#79BFD1; --c-B:#4DA6C6;
+    --warn:#E8A44C;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+button,input,select,textarea{font:inherit;color:inherit}
+
+.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top-inner{max-width:1260px;margin:0 auto;padding:22px 24px;display:flex;gap:20px 32px;justify-content:space-between;align-items:flex-end;flex-wrap:wrap}
+h1{font:600 30px/1.1 var(--serif);letter-spacing:-.012em;margin:0 0 6px}
+.top p{margin:0;color:var(--muted);max-width:62ch}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 14px;border:1px solid var(--line);background:var(--surface);border-radius:6px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn.primary:hover{opacity:.9}
+
+.layout{max-width:1260px;margin:0 auto;padding:24px;display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:28px;align-items:start}
+.col-result{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;border-radius:8px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px 20px}
+.card h2,.grp-head h2{font:600 20px/1.2 var(--serif);margin:0}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px 14px;margin-top:14px}
+.field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:3px}
+.field input,.field select,.field textarea,.search input[type=search]{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:5px;background:var(--bg);}
+.field.wide{grid-column:1/-1}
+.field textarea{resize:vertical;min-height:62px}
+.hint{font-size:12.5px;color:var(--muted);margin:4px 0 0;min-height:1em}
+
+.search{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:22px 0 4px}
+.search input[type=search]{max-width:340px}
+.search label.chk{display:flex;gap:7px;align-items:center;color:var(--muted);cursor:pointer}
+
+.grp{margin-top:22px}
+.grp-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:12px}
+.grp-head span{font-size:13px;color:var(--muted)}
+.rows{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+
+.crit{--dc:var(--c-P);display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;background:var(--surface);position:relative;border-top:1px solid var(--line)}
+.crit:first-child{border-top:0}
+.crit.B{--dc:var(--c-B)}
+.crit::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--dc);opacity:.3}
+.crit.met::before{opacity:1}
+.crit.met{background:color-mix(in srgb,var(--dc) 9%,var(--surface))}
+.crit-main{display:flex;gap:12px;align-items:center;padding:10px 0 10px 18px;cursor:pointer;min-width:0}
+.crit-main input{width:18px;height:18px;flex:none;accent-color:var(--dc);margin:0}
+.code{flex:none;min-width:58px;text-align:center;font:600 12.5px var(--mono);padding:2px 6px;border:1px solid var(--dc);color:var(--dc);border-radius:4px}
+.crit.met .code{background:var(--dc);color:var(--surface)}
+.ttl{min-width:0}
+.ttl b{font-weight:500}
+.ttl small{display:block;color:var(--muted);font-size:12.5px}
+.side{display:flex;gap:8px;align-items:center;padding:8px 12px 8px 0}
+.side select{padding:4px 6px;border:1px solid var(--line);border-radius:5px;background:var(--surface);font-size:13px}
+.side select.adj{border-style:dashed;border-color:var(--dc)}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px 2px;font-size:13px}
+.linkbtn:hover{color:var(--ink)}
+.detail{grid-column:1/-1;padding:0 16px 14px 18px;display:none}
+.crit.open .detail{display:block}
+.detail p{margin:0 0 8px;max-width:72ch}
+.detail .tip{color:var(--muted);border-left:2px solid var(--line);padding-left:10px}
+.detail textarea{width:100%;min-height:54px;resize:vertical;padding:7px 9px;border:1px solid var(--line);border-radius:5px;background:var(--bg)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+
+.res{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px}
+.vname{font:13px/1.3 var(--mono);color:var(--muted);margin:0 0 10px;overflow-wrap:anywhere}
+.verdict{display:flex;gap:12px;align-items:center}
+.swatch{width:12px;align-self:stretch;border-radius:2px;background:var(--vc)}
+.verdict h2{font:600 31px/1.08 var(--serif);letter-spacing:-.01em;margin:0;color:var(--vc)}
+.rule{margin:8px 0 0;color:var(--muted)}
+.res h3{font:600 15px/1.2 var(--serif);margin:22px 0 0}
+.ruler{padding:0 16px;margin-top:6px}
+.bar{position:relative;margin-top:30px}
+.zones{display:flex;gap:2px;height:14px}
+.zone{background:var(--zc);opacity:.3;border-radius:2px;transition:opacity .25s}
+.zone.on{opacity:1}
+.marker{position:absolute;top:-6px;height:26px;width:2px;margin-left:-1px;background:var(--ink);transition:left .4s cubic-bezier(.3,.7,.2,1)}
+.marker span{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:3px;background:var(--ink);color:var(--surface);font:600 12px var(--mono);padding:1px 7px;border-radius:3px;white-space:nowrap}
+.zlabels{display:flex;gap:2px;margin-top:7px}
+.zl{text-align:center;font-size:11px;line-height:1.3;color:var(--muted);min-width:0}
+.zl b{display:block;font-size:12px;color:var(--ink);font-weight:600}
+.zl.on b{color:var(--zc)}
+
+.methods{display:grid;gap:8px;margin:20px 0 0}
+.method{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface2);cursor:pointer;width:100%}
+.method small{display:block;color:var(--muted);font-size:12.5px}
+.method b{color:var(--mc);font-weight:600;text-align:right}
+.method[aria-pressed=true]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);background:var(--surface)}
+
+.tally{width:100%;border-collapse:collapse;margin-top:20px;font-size:13px;table-layout:fixed}
+.tally th,.tally td{padding:5px 3px;text-align:center;border-bottom:1px solid var(--line)}
+.tally thead th{font-weight:400;color:var(--muted);font-size:11.5px;line-height:1.2;vertical-align:bottom}
+.tally tbody th{text-align:left;font-weight:600;width:22%}
+.tally td{color:var(--muted)}
+.tally td.nz{color:var(--ink);font-weight:700}
+.tally .rp th{color:var(--c-P)} .tally .rb th{color:var(--c-B)}
+
+.alerts{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:8px}
+.alerts li{border-left:3px solid var(--warn);padding:2px 0 2px 10px;font-size:13.5px}
+.alerts li.info{border-color:var(--line);color:var(--muted)}
+.actions{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap}
+details.rep{margin-top:14px}
+details.rep summary{cursor:pointer;color:var(--muted);font-size:13.5px}
+details.rep textarea{width:100%;margin-top:8px;min-height:240px;font:12px/1.5 var(--mono);padding:9px;border:1px solid var(--line);border-radius:5px;background:var(--bg);resize:vertical}
+
+footer{max-width:1260px;margin:8px auto 40px;padding:0 24px;color:var(--muted);font-size:13px}
+footer p{max-width:90ch;margin:0 0 10px}
+footer ul{margin:6px 0 0;padding-left:18px}
+
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:var(--ink);color:var(--surface);padding:8px 16px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.mbar{display:none}
+
+@media (max-width:960px){
+  .layout{grid-template-columns:1fr;padding:16px}
+  .col-result{position:static;max-height:none}
+  body{padding-bottom:64px}
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;width:100%;text-align:left;border-left:0;border-right:0;border-bottom:0}
+  .mbar b{color:var(--vc);font:600 17px var(--serif)}
+  .mbar span{font:600 13px var(--mono)}
+  .crit{grid-template-columns:1fr}
+  .side{padding:0 12px 10px 48px}
+  h1{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div>
+      <h1>Variant classification workbench</h1>
+      <p>Classify germline sequence variants against the ACMG/AMP criteria. Select the evidence you have and the classification updates as you go.</p>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="btnLoad" type="button">Load case</button>
+      <input type="file" id="file" accept=".json,application/json" hidden>
+      <button class="btn" id="btnSave" type="button">Save case</button>
+      <button class="btn" id="btnReset" type="button">Start over</button>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="col-main">
+    <section class="card" aria-labelledby="vh">
+      <h2 id="vh">Variant</h2>
+      <div class="fields" id="fields"></div>
+    </section>
+
+    <div class="search">
+      <input type="search" id="q" placeholder="Filter criteria by code or keyword" aria-label="Filter criteria">
+      <label class="chk"><input type="checkbox" id="onlySel"> Show selected only</label>
+    </div>
+
+    <div id="criteria"></div>
+    <div class="empty" id="noMatch" hidden>No criteria match this filter.</div>
+  </div>
+
+  <aside class="col-result" id="result" aria-label="Classification result">
+    <div class="res" id="res">
+      <p class="vname" id="vname"></p>
+      <div class="verdict"><span class="swatch"></span><h2 id="vlabel"></h2></div>
+      <p class="rule" id="vrule"></p>
+
+      <h3>Evidence points</h3>
+      <div class="ruler">
+        <div class="bar">
+          <div class="zones" id="zones"></div>
+          <div class="marker" id="marker"><span id="mbadge">0</span></div>
+        </div>
+        <div class="zlabels" id="zlabels"></div>
+      </div>
+
+      <div class="methods" role="group" aria-label="Choose the method shown above">
+        <button type="button" class="method" id="mRules" aria-pressed="true">
+          <span>ACMG/AMP 2015 combining rules<small>Count of criteria by strength</small></span><b id="mRulesRes"></b>
+        </button>
+        <button type="button" class="method" id="mPoints" aria-pressed="false">
+          <span>Points system<small id="mPointsSub"></small></span><b id="mPointsRes"></b>
+        </button>
+      </div>
+
+      <table class="tally" aria-label="Criteria selected by strength">
+        <thead><tr><th></th><th>Stand-alone</th><th>Very strong</th><th>Strong</th><th>Moderate</th><th>Supporting</th></tr></thead>
+        <tbody>
+          <tr class="rp"><th>Pathogenic</th><td>–</td><td id="tP_vs"></td><td id="tP_str"></td><td id="tP_mod"></td><td id="tP_sup"></td></tr>
+          <tr class="rb"><th>Benign</th><td id="tB_sa"></td><td>–</td><td id="tB_str"></td><td>–</td><td id="tB_sup"></td></tr>
+        </tbody>
+      </table>
+
+      <ul class="alerts" id="alerts"></ul>
+
+      <div class="actions">
+        <button class="btn primary" id="btnCopy" type="button">Copy report</button>
+        <button class="btn" id="btnDl" type="button">Download report</button>
+      </div>
+      <details class="rep" id="rep">
+        <summary>Report text</summary>
+        <textarea id="repText" readonly aria-label="Report text"></textarea>
+      </details>
+    </div>
+  </aside>
+</main>
+
+<button class="mbar" id="mbar" type="button" aria-label="Show classification result">
+  <b id="mbLabel"></b><span id="mbPts"></span>
+</button>
+
+<footer>
+  <p>This tool supports qualified variant scientists and clinicians. It does not replace expert review or gene-specific criteria from ClinGen Variant Curation Expert Panels. Nothing you enter leaves your browser, and nothing is stored between visits, so use Save case to keep your work.</p>
+  <p>It implements the 2015 ACMG/AMP guideline with ClinGen SVI refinements noted on individual criteria. The draft ACMG/AMP v4 revision is not implemented.</p>
+  <ul>
+    <li>Richards S et al. Genet Med 2015;17:405–424. Standards and guidelines for the interpretation of sequence variants.</li>
+    <li>Tavtigian SV et al. Genet Med 2018. Modeling the ACMG/AMP guidelines as a Bayesian classification framework.</li>
+    <li>Tavtigian SV et al. Hum Mutat 2020. Fitting a naturally scaled point system to the ACMG/AMP guidelines.</li>
+    <li>Abou Tayoun AN et al. Hum Mutat 2018;39:1517–1524. Recommendations for interpreting PVS1.</li>
+    <li>Brnich SE et al. Genome Med 2020;12:3. Recommendations for PS3/BS3.</li>
+    <li>Pejaver V et al. Am J Hum Genet 2022;109:2163–2177. Calibration of computational tools for PP3/BP4.</li>
+  </ul>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Reference data ---------- */
+const STR={ sup:'Supporting', mod:'Moderate', str:'Strong', vs:'Very strong', sa:'Stand-alone' };
+const STR_NOTATION={ sup:'Supporting', mod:'Moderate', str:'Strong', vs:'VeryStrong', sa:'StandAlone' };
+const PTS={ sup:1, mod:2, str:4, vs:8, sa:8 };
+const OPTS={ P:['sup','mod','str','vs'], B:['sup','str','sa'] };
+const CLS={ P:'Pathogenic', LP:'Likely pathogenic', VUS:'Uncertain significance', LB:'Likely benign', B:'Benign' };
+const ZONES=[
+  {cls:'B',  w:3.5, name:'B',   range:'≤ −7'},
+  {cls:'LB', w:6,   name:'LB',  range:'−6 to −1'},
+  {cls:'VUS',w:6,   name:'VUS', range:'0 to 5'},
+  {cls:'LP', w:4,   name:'LP',  range:'6 to 9'},
+  {cls:'P',  w:4.5, name:'P',   range:'≥ 10'}
+];
+const SCALE_MIN=-10, SCALE_MAX=14;
+
+const GROUPS=[
+  {id:'pop',   name:'Population and case-control data'},
+  {id:'comp',  name:'Computational and gene-level predictions'},
+  {id:'func',  name:'Functional studies'},
+  {id:'type',  name:'Variant type and position'},
+  {id:'seg',   name:'Segregation and allelic data'},
+  {id:'denovo',name:'De novo occurrence'},
+  {id:'pheno', name:'Phenotype and other evidence'}
+];
+
+// dir: P pathogenic / B benign. orig: strength in the 2015 guideline. def: starting strength here.
+const C=(code,dir,orig,group,title,text,tip,flag,def)=>({code,dir,orig,def:def||orig,group,title,text,tip:tip||'',flag:flag||''});
+const CRITERIA=[
+  // population
+  C('PM2','P','mod','pop','Absent or extremely rare in population databases',
+    'Absent from controls in population databases, or at extremely low frequency if the disorder is recessive.',
+    'ClinGen SVI recommends applying PM2 at Supporting strength. Check sequencing coverage at the site before relying on absence.','ClinGen SVI: apply at Supporting','sup'),
+  C('PS4','P','str','pop','More common in affected people than in controls',
+    'The prevalence of the variant in affected individuals is significantly increased compared with controls.',
+    'When case-control statistics are not possible for a rare variant, count unrelated probands with a consistent phenotype.'),
+  C('BA1','B','sa','pop','Allele frequency above 5%',
+    'Allele frequency is greater than 5% in population databases.',
+    'ClinGen SVI sets the cutoff at 0.05 in a large continental population and keeps a short exception list for known pathogenic variants that are common.'),
+  C('BS1','B','str','pop','Frequency higher than expected for the disorder',
+    'Allele frequency is greater than expected for the disorder.',
+    'Compare with a threshold calculated from disease prevalence, penetrance and genetic heterogeneity.'),
+  C('BS2','B','str','pop','Seen in healthy adults with a fully penetrant disorder',
+    'Observed in a healthy adult for a recessive (homozygous), dominant (heterozygous) or X-linked (hemizygous) disorder with full penetrance expected at an early age.',
+    ''),
+  // computational
+  C('PP3','P','sup','comp','Computational evidence supports a damaging effect',
+    'Multiple lines of computational evidence support a deleterious effect on the gene or gene product, such as conservation, evolutionary constraint or splicing impact.',
+    'Use one calibrated predictor rather than several correlated ones. Pejaver et al. 2022 supports up to Strong for some score ranges.'),
+  C('BP4','B','sup','comp','Computational evidence suggests no impact',
+    'Multiple lines of computational evidence suggest no impact on the gene or gene product.',
+    'Same advice as PP3: use one calibrated predictor, and do not apply PP3 and BP4 together.'),
+  C('PP2','P','sup','comp','Missense in a gene with little benign missense variation',
+    'Missense variant in a gene that has a low rate of benign missense variation and where missense variants are a common disease mechanism.',
+    ''),
+  C('BP1','B','sup','comp','Missense in a gene where truncating variants cause disease',
+    'Missense variant in a gene for which primarily truncating variants are known to cause disease.',
+    ''),
+  C('BP7','B','sup','comp','Synonymous with no predicted splice effect',
+    'Synonymous variant with no predicted impact on splicing, at a nucleotide that is not highly conserved.',
+    'ClinGen splicing guidance extends this criterion to some intronic variants outside the splice consensus.'),
+  // functional
+  C('PS3','P','str','func','Functional studies show a damaging effect',
+    'Well-established in vitro or in vivo functional studies support a damaging effect on the gene or gene product.',
+    'Brnich et al. 2020 sets the strength by assay validity (controls, replicates, number of validated variants), from Supporting up to Very strong.'),
+  C('BS3','B','str','func','Functional studies show no damaging effect',
+    'Well-established in vitro or in vivo functional studies show no damaging effect on protein function or splicing.',
+    'Follow the same assay validity framework as PS3.'),
+  // type and position
+  C('PVS1','P','vs','type','Null variant in a gene where loss of function causes disease',
+    'Nonsense, frameshift, canonical ±1 or 2 splice site, initiation codon, or single or multi-exon deletion in a gene where loss of function is an established disease mechanism.',
+    'Work through the ClinGen PVS1 decision tree. Predicted NMD escape, exons missing from key transcripts and the share of protein removed can all lower the strength.'),
+  C('PS1','P','str','type','Same amino acid change as a known pathogenic variant',
+    'Same amino acid change as a previously established pathogenic variant, regardless of nucleotide change.',
+    'Confirm the nucleotide change does not act through splicing.'),
+  C('PM1','P','mod','type','Hot spot or critical functional domain',
+    'Located in a mutational hot spot or a critical, well-established functional domain without benign variation.',
+    ''),
+  C('PM4','P','mod','type','Protein length change',
+    'Protein length change from an in-frame deletion or insertion in a non-repeat region, or a stop-loss variant.',
+    ''),
+  C('PM5','P','mod','type','New missense where another pathogenic missense is known',
+    'Missense change at an amino acid residue where a different missense change has been established as pathogenic.',
+    ''),
+  C('BP3','B','sup','type','In-frame change in a repeat region',
+    'In-frame deletion or insertion in a repetitive region without a known function.',
+    ''),
+  // segregation / allelic
+  C('PP1','P','sup','seg','Co-segregates with disease in the family',
+    'Co-segregation with disease in multiple affected family members, in a gene definitively known to cause the disease.',
+    'Strength can increase with more informative meioses. See the ClinGen PP1/BS4 guidance.'),
+  C('BS4','B','str','seg','Does not segregate in affected family members',
+    'Lack of segregation in affected members of a family.',
+    'Consider phenocopies and reduced penetrance before applying.'),
+  C('PM3','P','mod','seg','In trans with a pathogenic variant (recessive)',
+    'For recessive disorders, detected in trans with a pathogenic variant.',
+    'Confirm phase. Strength rises with the number of independent observations.'),
+  C('BP2','B','sup','seg','In trans or in cis with a pathogenic variant',
+    'Observed in trans with a pathogenic variant for a fully penetrant dominant disorder, or in cis with a pathogenic variant in any inheritance pattern.',
+    ''),
+  // de novo
+  C('PS2','P','str','denovo','De novo, confirmed parentage',
+    'De novo occurrence with maternity and paternity confirmed, in a patient with the disease and no family history.',
+    'ClinGen SVI scores PS2 and PM6 by the number of de novo cases and how well each phenotype fits. Use PS2 or PM6, not both.'),
+  C('PM6','P','mod','denovo','Assumed de novo',
+    'Assumed de novo, but maternity and paternity are not confirmed.',
+    ''),
+  // phenotype / other
+  C('PP4','P','sup','pheno','Phenotype highly specific for the gene',
+    "The patient's phenotype or family history is highly specific for a disease with a single genetic cause.",
+    ''),
+  C('BP5','B','sup','pheno','Another molecular cause found',
+    'Variant found in a case with an alternate molecular basis for disease.',
+    ''),
+  C('PP5','P','sup','pheno','Reputable source reports pathogenic',
+    'A reputable source recently reports the variant as pathogenic, but the evidence is not available to the laboratory.',
+    'ClinGen SVI recommends against using PP5 and BP6. Cite the underlying evidence instead.','Retired by ClinGen SVI'),
+  C('BP6','B','sup','pheno','Reputable source reports benign',
+    'A reputable source recently reports the variant as benign, but the evidence is not available to the laboratory.',
+    'ClinGen SVI recommends against using PP5 and BP6. Cite the underlying evidence instead.','Retired by ClinGen SVI')
+];
+const BYCODE=Object.fromEntries(CRITERIA.map(c=>[c.code,c]));
+
+const FIELDS=[
+  {k:'gene',label:'Gene',ph:'CFTR'},
+  {k:'transcript',label:'Transcript',ph:'NM_000492.4'},
+  {k:'hgvsc',label:'cDNA change (HGVS c.)',ph:'c.1521_1523del'},
+  {k:'hgvsp',label:'Protein change (HGVS p.)',ph:'p.Phe508del'},
+  {k:'build',label:'Genome build',opts:['GRCh38','GRCh37']},
+  {k:'zyg',label:'Zygosity',opts:['Heterozygous','Homozygous','Hemizygous','Compound heterozygous']},
+  {k:'cond',label:'Condition',ph:'Disease or phenotype'},
+  {k:'inh',label:'Inheritance',opts:['','Autosomal dominant','Autosomal recessive','X-linked dominant','X-linked recessive','Other']},
+  {k:'af',label:'Highest population allele frequency',ph:'0.00001 or 1e-5',hint:true},
+  {k:'by',label:'Classified by'},
+  {k:'date',label:'Date',type:'date'},
+  {k:'notes',label:'Case summary',area:true,wide:true}
+];
+
+/* ---------- Helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const today=()=>new Date().toISOString().slice(0,10);
+const sgn=n=>n>0?'+'+n:(n<0?'−'+Math.abs(n):'0');
+function h(tag,attrs,...kids){
+  const e=document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs||{})){
+    if(v===false||v==null) continue;
+    if(k==='class') e.className=v;
+    else if(k.startsWith('on')) e.addEventListener(k.slice(2),v);
+    else if(v===true) e.setAttribute(k,'');
+    else e.setAttribute(k,v);
+  }
+  for(const kid of kids.flat()){ if(kid==null) continue; e.append(kid.nodeType?kid:document.createTextNode(kid)); }
+  return e;
+}
+let toastTimer;
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ---------- State ---------- */
+function freshState(){
+  const criteria={};
+  CRITERIA.forEach(c=>criteria[c.code]={met:false,strength:c.def,note:''});
+  return {
+    variant:{gene:'',transcript:'',hgvsc:'',hgvsp:'',build:'GRCh38',zyg:'Heterozygous',cond:'',inh:'',af:'',by:'',date:today(),notes:''},
+    criteria, method:'rules'
+  };
+}
+let state=freshState();
+
+/* ---------- Classification logic ---------- */
+function tally(){
+  const P={vs:0,str:0,mod:0,sup:0}, B={sa:0,str:0,sup:0};
+  let pts=0, count=0;
+  for(const c of CRITERIA){
+    const st=state.criteria[c.code];
+    if(!st.met) continue;
+    count++;
+    if(c.dir==='P'){ P[st.strength]++; pts+=PTS[st.strength]; }
+    else { B[st.strength]++; pts-=PTS[st.strength]; }
+  }
+  return {P,B,pts,count};
+}
+
+function firstHit(list){ for(const [ok,txt] of list){ if(ok) return txt; } return null; }
+
+function byRules({P,B}){
+  const vs=P.vs, s=P.str, m=P.mod, p=P.sup;
+  const pHit=firstHit([
+    [vs>=1&&s>=1,'1 very strong + at least 1 strong'],
+    [vs>=1&&m>=2,'1 very strong + at least 2 moderate'],
+    [vs>=1&&m>=1&&p>=1,'1 very strong + 1 moderate + 1 supporting'],
+    [vs>=1&&p>=2,'1 very strong + at least 2 supporting'],
+    [vs>=2,'2 very strong'],
+    [s>=2,'at least 2 strong'],
+    [s>=1&&m>=3,'1 strong + at least 3 moderate'],
+    [s>=1&&m>=2&&p>=2,'1 strong + 2 moderate + at least 2 supporting'],
+    [s>=1&&m>=1&&p>=4,'1 strong + 1 moderate + at least 4 supporting']
+  ]);
+  const lpHit=pHit?null:firstHit([
+    [vs>=1&&m>=1,'1 very strong + 1 moderate'],
+    [s>=1&&m>=1,'1 strong + 1 or 2 moderate'],
+    [s>=1&&p>=2,'1 strong + at least 2 supporting'],
+    [m>=3,'at least 3 moderate'],
+    [m>=2&&p>=2,'2 moderate + at least 2 supporting'],
+    [m>=1&&p>=4,'1 moderate + at least 4 supporting']
+  ]);
+  const bHit=firstHit([
+    [B.sa>=1,'1 stand-alone'],
+    [B.str>=2,'at least 2 strong']
+  ]);
+  const lbHit=bHit?null:firstHit([
+    [B.str>=1&&B.sup>=1,'1 strong + 1 supporting'],
+    [B.sup>=2,'at least 2 supporting']
+  ]);
+  const pathCls=pHit?'P':(lpHit?'LP':null);
+  const benCls=bHit?'B':(lbHit?'LB':null);
+  if(pathCls&&benCls) return {cls:'VUS',conflict:true,rule:'Pathogenic and benign criteria are both met, so the 2015 rules default to uncertain significance.'};
+  if(pathCls) return {cls:pathCls,rule:'Met by '+(pHit||lpHit)+'.'};
+  if(benCls)  return {cls:benCls,rule:'Met by '+(bHit||lbHit)+'.'};
+  return {cls:'VUS',rule:'No pathogenic or benign combination is met.'};
+}
+
+function byPoints(pts){
+  const cls=pts>=10?'P':pts>=6?'LP':pts>=0?'VUS':pts>=-6?'LB':'B';
+  return {cls,pts};
+}
+function posterior(pts){ const op=Math.pow(350,pts/8); return op*0.1/((op-1)*0.1+1); }
+function fmtPost(x){
+  if(x<0.001) return 'under 0.1%';
+  if(x>0.999) return 'over 99.9%';
+  return (x*100).toFixed(x<0.01||x>0.99?1:0)+'%';
+}
+
+/* ---------- Allele frequency hint ---------- */
+function afValue(){
+  const raw=state.variant.af.trim(); if(!raw) return null;
+  const v=Number(raw); return (isFinite(v)&&v>=0&&v<=1)?v:NaN;
+}
+function afHint(){
+  const v=afValue();
+  if(v===null) return '';
+  if(Number.isNaN(v)) return 'Enter a frequency between 0 and 1.';
+  if(v>=0.05) return 'At or above 5%: BA1 applies unless the variant is on the ClinGen exception list.';
+  if(v===0) return 'Absent from controls: PM2 can apply, at Supporting strength per ClinGen SVI. Check coverage at the site.';
+  return 'Below 5%: compare with a disease-specific threshold for BS1 and a very low cutoff for PM2.';
+}
+
+/* ---------- Alerts ---------- */
+function getAlerts(t,rules,pts){
+  const met=code=>state.criteria[code].met;
+  const out=[];
+  if(rules.conflict) out.push(['warn','Pathogenic and benign evidence are both selected. Check for double counting, or reconsider the criteria that conflict.']);
+  const pairs=[
+    ['PS1','PM5','PS1 and PM5 cover the same residue. Use the stronger one that fits.'],
+    ['PS2','PM6','PS2 and PM6 are mutually exclusive: de novo status is either confirmed or assumed.'],
+    ['PP3','BP4','PP3 and BP4 contradict each other.'],
+    ['PP2','BP1','PP2 and BP1 contradict each other.'],
+    ['PS3','BS3','PS3 and BS3 contradict each other.'],
+    ['PP1','BS4','PP1 and BS4 contradict each other.'],
+    ['BA1','BS1','BA1 already covers BS1. Use one frequency criterion.'],
+    ['BA1','PM2','BA1 and PM2 contradict each other.'],
+    ['BS1','PM2','BS1 and PM2 contradict each other.'],
+    ['PVS1','PP3','If PP3 rests on the same splicing or loss-of-function prediction used for PVS1, drop PP3 to avoid double counting.'],
+    ['PS4','PP4','Check that PS4 and PP4 do not count the same affected individuals twice.']
+  ];
+  for(const [a,b,msg] of pairs) if(met(a)&&met(b)) out.push(['warn',msg]);
+  if(met('PP5')||met('BP6')) out.push(['warn','PP5 and BP6 are retired by ClinGen SVI. Cite the underlying evidence instead.']);
+  const af=afValue();
+  if(typeof af==='number'&&!Number.isNaN(af)){
+    if(met('BA1')&&af<0.05) out.push(['warn','BA1 is selected but the allele frequency entered is below 5%.']);
+    if(!met('BA1')&&af>=0.05) out.push(['info','The allele frequency entered is 5% or higher. BA1 usually applies.']);
+  }
+  if(t.count>0&&rules.cls!==pts.cls) out.push(['info','The two methods disagree: '+CLS[rules.cls]+' by the 2015 rules, '+CLS[pts.cls]+' by points. Report the one your laboratory procedure specifies.']);
+  return out;
+}
+
+/* ---------- Build UI ---------- */
+const rowRefs={};
+function buildFields(){
+  const wrap=$('#fields');
+  FIELDS.forEach(f=>{
+    const id='f_'+f.k;
+    let input;
+    if(f.opts) input=h('select',{id},f.opts.map(o=>h('option',{value:o},o||'Not specified')));
+    else if(f.area) input=h('textarea',{id,placeholder:'Optional notes on the case or the interpretation'});
+    else input=h('input',{id,type:f.type||'text',placeholder:f.ph||'',autocomplete:'off',spellcheck:'false'});
+    input.addEventListener('input',()=>{ state.variant[f.k]=input.value; update(); });
+    wrap.append(h('div',{class:'field'+(f.wide?' wide':'')},
+      h('label',{for:id},f.label), input,
+      f.hint?h('p',{class:'hint',id:'afHint'}):null));
+  });
+}
+
+function buildCriteria(){
+  const host=$('#criteria');
+  GROUPS.forEach(g=>{
+    const list=CRITERIA.filter(c=>c.group===g.id);
+    const rows=h('div',{class:'rows'});
+    const count=h('span',{});
+    const sec=h('section',{class:'grp'},h('div',{class:'grp-head'},h('h2',{},g.name),count),rows);
+    g.el=sec; g.count=count; g.list=list;
+    list.forEach(c=>{
+      const st=state.criteria[c.code];
+      const cb=h('input',{type:'checkbox',id:'cb_'+c.code});
+      const sel=h('select',{'aria-label':c.code+' strength'},OPTS[c.dir].map(k=>h('option',{value:k},STR[k])));
+      const note=h('textarea',{placeholder:'Evidence and source: PMIDs, database entries, assay details','aria-label':c.code+' evidence notes'});
+      const btn=h('button',{class:'linkbtn',type:'button','aria-expanded':'false'},'Details');
+      const detail=h('div',{class:'detail'},
+        h('p',{},c.text),
+        c.tip?h('p',{class:'tip'},c.tip):null,
+        note);
+      const row=h('div',{class:'crit '+c.dir},
+        h('label',{class:'crit-main'},cb,h('span',{class:'code'},c.code),
+          h('span',{class:'ttl'},h('b',{},c.title),c.flag?h('small',{},c.flag):null)),
+        h('div',{class:'side'},sel,btn),
+        detail);
+      cb.addEventListener('change',()=>{ st.met=cb.checked; update(); });
+      sel.addEventListener('change',()=>{ st.strength=sel.value; update(); });
+      note.addEventListener('input',()=>{ st.note=note.value; updateReport(); });
+      btn.addEventListener('click',()=>{
+        const open=row.classList.toggle('open');
+        btn.setAttribute('aria-expanded',String(open));
+        btn.textContent=open?'Hide':'Details';
+      });
+      rows.append(row);
+      rowRefs[c.code]={row,cb,sel,note,btn};
+    });
+    host.append(sec);
+  });
+}
+
+function buildRuler(){
+  const z=$('#zones'), l=$('#zlabels');
+  ZONES.forEach(zn=>{
+    const zc='var(--c-'+zn.cls+')';
+    const a=h('div',{class:'zone','data-cls':zn.cls}); a.style.flex=zn.w+' 1 0'; a.style.setProperty('--zc',zc); z.append(a);
+    const b=h('div',{class:'zl','data-cls':zn.cls},h('b',{},zn.name),zn.range); b.style.flex=zn.w+' 1 0'; b.style.setProperty('--zc',zc); l.append(b);
+  });
+}
+
+/* ---------- Render ---------- */
+function methodResult(t,rules,pts){
+  if(state.method==='rules') return {cls:rules.cls,rule:t.count===0?'Select criteria on the left to classify this variant.':rules.rule};
+  const p=posterior(t.pts);
+  return {cls:pts.cls,rule:t.count===0?'Select criteria on the left to classify this variant.':
+    'Total of '+sgn(t.pts)+' points. Posterior probability of pathogenicity: '+fmtPost(p)+' (prior 10%).'};
+}
+
+function update(){
+  const t=tally(), rules=byRules(t), pts=byPoints(t.pts), main=methodResult(t,rules,pts);
+  const q=$('#q').value.trim().toLowerCase(), only=$('#onlySel').checked;
+
+  // rows
+  let visible=0;
+  GROUPS.forEach(g=>{
+    let vis=0, met=0;
+    g.list.forEach(c=>{
+      const st=state.criteria[c.code], r=rowRefs[c.code];
+      r.row.classList.toggle('met',st.met);
+      r.cb.checked=st.met;
+      r.sel.hidden=!st.met;
+      r.sel.value=st.strength;
+      r.sel.classList.toggle('adj',st.strength!==c.orig);
+      r.sel.title=st.strength!==c.orig?'Adjusted from '+STR[c.orig]:'';
+      const match=(!q||(c.code+' '+c.title+' '+c.text).toLowerCase().includes(q))&&(!only||st.met);
+      r.row.hidden=!match;
+      if(match) vis++;
+      if(st.met) met++;
+    });
+    g.el.hidden=vis===0;
+    g.count.textContent=met?met+' selected':'';
+    visible+=vis;
+  });
+  $('#noMatch').hidden=visible>0;
+
+  // verdict
+  const res=$('#res'), name=[state.variant.gene,state.variant.hgvsc,state.variant.hgvsp].filter(Boolean).join(' ');
+  res.style.setProperty('--vc','var(--c-'+main.cls+')');
+  $('#vname').textContent=name||'No variant entered';
+  $('#vlabel').textContent=CLS[main.cls];
+  $('#vrule').textContent=main.rule;
+
+  // ruler
+  const clamped=Math.max(SCALE_MIN,Math.min(SCALE_MAX,t.pts));
+  $('#marker').style.left=((clamped-SCALE_MIN)/(SCALE_MAX-SCALE_MIN)*100)+'%';
+  $('#mbadge').textContent=sgn(t.pts);
+  document.querySelectorAll('#zones .zone,#zlabels .zl').forEach(e=>e.classList.toggle('on',e.dataset.cls===pts.cls));
+
+  // methods
+  $('#mRules').setAttribute('aria-pressed',String(state.method==='rules'));
+  $('#mPoints').setAttribute('aria-pressed',String(state.method==='points'));
+  const mr=$('#mRulesRes'), mp=$('#mPointsRes');
+  mr.textContent=CLS[rules.cls]; mr.style.setProperty('--mc','var(--c-'+rules.cls+')');
+  mp.textContent=CLS[pts.cls];   mp.style.setProperty('--mc','var(--c-'+pts.cls+')');
+  $('#mPointsSub').textContent=sgn(t.pts)+' points, posterior '+fmtPost(posterior(t.pts));
+
+  // tally
+  [['P','vs'],['P','str'],['P','mod'],['P','sup'],['B','sa'],['B','str'],['B','sup']].forEach(([d,k])=>{
+    const n=t[d][k], td=$('#t'+d+'_'+k); td.textContent=n; td.classList.toggle('nz',n>0);
+  });
+
+  // alerts
+  const ul=$('#alerts'); ul.textContent='';
+  getAlerts(t,rules,pts).forEach(([type,msg])=>ul.append(h('li',{class:type==='info'?'info':''},msg)));
+
+  // af hint
+  const ah=$('#afHint'); if(ah) ah.textContent=afHint();
+
+  // mobile bar
+  $('#mbLabel').textContent=CLS[main.cls];
+  $('#mbar').style.setProperty('--vc','var(--c-'+main.cls+')');
+  $('#mbPts').textContent=sgn(t.pts)+' pts';
+
+  updateReport();
+}
+
+/* ---------- Report ---------- */
+function notation(c){
+  const st=state.criteria[c.code];
+  return st.strength===c.orig?c.code:c.code+'_'+STR_NOTATION[st.strength];
+}
+function buildReport(){
+  const v=state.variant, t=tally(), rules=byRules(t), pts=byPoints(t.pts);
+  const L=[];
+  L.push('Germline variant classification (ACMG/AMP)');
+  L.push('');
+  const add=(k,val)=>{ if(val) L.push(k+': '+val); };
+  add('Gene',v.gene); add('Transcript',v.transcript); add('cDNA change',v.hgvsc); add('Protein change',v.hgvsp);
+  add('Genome build',v.build); add('Zygosity',v.zyg); add('Condition',v.cond); add('Inheritance',v.inh);
+  add('Highest population allele frequency',v.af);
+  L.push('');
+  L.push('Classification by ACMG/AMP 2015 combining rules: '+CLS[rules.cls]);
+  L.push('  '+rules.rule);
+  L.push('Classification by points: '+CLS[pts.cls]+' ('+sgn(t.pts)+' points, posterior probability of pathogenicity '+fmtPost(posterior(t.pts))+')');
+  L.push('');
+  const used=CRITERIA.filter(c=>state.criteria[c.code].met);
+  if(used.length){
+    L.push('Criteria applied:');
+    used.forEach(c=>{
+      const st=state.criteria[c.code];
+      L.push('- '+notation(c)+' ('+STR[st.strength]+', '+(c.dir==='P'?'pathogenic':'benign')+'): '+c.title+(st.note.trim()?'\n    '+st.note.trim().replace(/\n/g,'\n    '):''));
+    });
+  } else L.push('No criteria applied.');
+  if(v.notes.trim()){ L.push(''); L.push('Case summary:'); L.push(v.notes.trim()); }
+  L.push('');
+  add('Classified by',v.by); add('Date',v.date);
+  L.push('');
+  L.push('Generated with the Variant classification workbench. Decision support only; requires review by a qualified variant scientist.');
+  return L.join('\n');
+}
+function updateReport(){ $('#repText').value=buildReport(); }
+
+function fileStem(){
+  const v=state.variant;
+  const s=[v.gene,v.hgvsc].filter(Boolean).join('_').replace(/[^\w.>-]+/g,'_').replace(/^_+|_+$/g,'');
+  return s||'variant';
+}
+function download(name,text,type){
+  const url=URL.createObjectURL(new Blob([text],{type}));
+  const a=h('a',{href:url,download:name}); document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ---------- Save / load ---------- */
+function caseJSON(){
+  const criteria={};
+  CRITERIA.forEach(c=>{ const st=state.criteria[c.code]; if(st.met||st.note.trim()) criteria[c.code]={met:st.met,strength:st.strength,note:st.note}; });
+  const t=tally(), rules=byRules(t), pts=byPoints(t.pts);
+  return {format:'acmg-variant-workbench',version:1,variant:state.variant,method:state.method,criteria,
+    result:{rules:CLS[rules.cls],points:t.pts,pointsClass:CLS[pts.cls]}};
+}
+function loadCase(obj){
+  if(!obj||obj.format!=='acmg-variant-workbench') throw new Error('This file is not a saved case from this tool.');
+  const s=freshState();
+  if(obj.variant) Object.keys(s.variant).forEach(k=>{ if(typeof obj.variant[k]==='string') s.variant[k]=obj.variant[k]; });
+  if(obj.method==='points'||obj.method==='rules') s.method=obj.method;
+  Object.entries(obj.criteria||{}).forEach(([code,v])=>{
+    const c=BYCODE[code]; if(!c||!v) return;
+    s.criteria[code].met=!!v.met;
+    if(OPTS[c.dir].includes(v.strength)) s.criteria[code].strength=v.strength;
+    if(typeof v.note==='string') s.criteria[code].note=v.note;
+  });
+  state=s; syncInputs(); update();
+}
+function syncInputs(){
+  FIELDS.forEach(f=>{ $('#f_'+f.k).value=state.variant[f.k]||''; });
+  CRITERIA.forEach(c=>{ rowRefs[c.code].note.value=state.criteria[c.code].note; });
+}
+
+/* ---------- Events ---------- */
+function bind(){
+  $('#q').addEventListener('input',update);
+  $('#onlySel').addEventListener('change',update);
+  $('#mRules').addEventListener('click',()=>{ state.method='rules'; update(); });
+  $('#mPoints').addEventListener('click',()=>{ state.method='points'; update(); });
+  $('#mbar').addEventListener('click',()=>$('#result').scrollIntoView({behavior:'smooth',block:'start'}));
+
+  $('#btnReset').addEventListener('click',()=>{
+    const any=tally().count>0||Object.values(state.variant).some((v,i)=>i>0&&v&&v!=='GRCh38'&&v!=='Heterozygous'&&v!==today());
+    if(any&&!confirm('Clear the variant details and all selected criteria?')) return;
+    state=freshState(); $('#q').value=''; $('#onlySel').checked=false;
+    Object.values(rowRefs).forEach(r=>{ r.row.classList.remove('open'); r.btn.textContent='Details'; r.btn.setAttribute('aria-expanded','false'); });
+    syncInputs(); update(); toast('Started over');
+  });
+
+  $('#btnSave').addEventListener('click',()=>{ download(fileStem()+'.acmg-case.json',JSON.stringify(caseJSON(),null,2),'application/json'); toast('Case saved'); });
+  $('#btnLoad').addEventListener('click',()=>$('#file').click());
+  $('#file').addEventListener('change',e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=()=>{ try{ loadCase(JSON.parse(rd.result)); toast('Case loaded'); }catch(err){ toast(err.message||'Could not read this file'); } };
+    rd.readAsText(f); e.target.value='';
+  });
+
+  $('#btnDl').addEventListener('click',()=>{ download(fileStem()+'.classification.txt',buildReport(),'text/plain'); toast('Report downloaded'); });
+  $('#btnCopy').addEventListener('click',async()=>{
+    const text=buildReport();
+    try{
+      await navigator.clipboard.writeText(text); toast('Report copied');
+    }catch(_){
+      const d=$('#rep'); d.open=true; const ta=$('#repText'); ta.focus(); ta.select();
+      toast('Press Ctrl+C or Cmd+C to copy the selected text');
+    }
+  });
+}
+
+/* ---------- Init ---------- */
+buildFields(); buildCriteria(); buildRuler(); syncInputs(); bind(); update();
+})();
+</script>
+</body>
+</html>
