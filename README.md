@@ -1,2 +1,3 @@
 Website URL
-https://zacshi.github.ioACMG_guidelines
+
+https://zacshi.github.io/ACMG_guidelines
